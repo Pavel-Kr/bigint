@@ -67,6 +67,11 @@ std::string bigint::to_string() const{
     return result.str();
 }
 
+bool bigint::is_prime()
+{
+    return false;
+}
+
 void bigint::operator+=(bigint &b){
     bigint tmp = *this + b;
     *this = tmp;
@@ -110,6 +115,36 @@ bigint bigint::operator+ (bigint &b){
 void bigint::operator-= (bigint &b){
     bigint tmp = *this - b;
     *this = tmp;
+}
+
+void bigint::operator*=(bigint& b)
+{
+    bigint tmp = *this * b;
+    *this = tmp;
+}
+
+void bigint::operator/=(bigint& b)
+{
+    bigint tmp = *this / b;
+    *this = tmp;
+}
+
+void bigint::operator%=(bigint& b)
+{
+    bigint tmp = *this % b;
+    *this = tmp;
+}
+
+void bigint::operator++()
+{
+    bigint one(1);
+    *this += one;
+}
+
+void bigint::operator--()
+{
+    bigint one(1);
+    *this -= one;
 }
 
 bigint bigint::operator- (bigint &b){
@@ -249,6 +284,11 @@ bigint bigint::operator% (bigint &b){
     bigint res, mod;
     _div(b, &res, &mod);
     return mod;
+}
+
+bigint bigint::operator+(long b)
+{
+    return bigint();
 }
 
 bool bigint::operator == (bigint &b){

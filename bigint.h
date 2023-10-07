@@ -30,14 +30,26 @@ public:
 
     std::string to_string() const;
 
+    bool is_prime();
+
     void operator+=(bigint &b);
     void operator-= (bigint &b);
+    void operator*=(bigint& b);
+    void operator/= (bigint& b);
+    void operator%=(bigint& b);
+    void operator++();
+    void operator--();
 
     bigint operator+ (bigint &b);
     bigint operator- (bigint &b);
     bigint operator* (bigint &b);
     bigint operator/ (bigint &b);
     bigint operator% (bigint &b);
+    bigint operator+ (long b);
+    bigint operator- (long b);
+    bigint operator* (long b);
+    bigint operator/ (long b);
+    bigint operator% (long b);
 
     bool operator == (bigint &b);
     bool operator == (long num);
