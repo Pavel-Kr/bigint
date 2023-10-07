@@ -41,12 +41,14 @@ bigint::bigint(long long num) : is_negative(false)
 
 bigint::bigint(RNG &rng, unsigned int bits) : is_negative(false)
 {
-    unsigned int bytes = bits / 8;
-    unsigned int digits_count = bits / bit_base;
+    unsigned int major_bits = bits % bit_base;
+    unsigned int whole_digits_count = bits / bit_base;
+    unsigned int digits_count = whole_digits_count + (major_bits > 0 ? 1 : 0);
     digits.resize(digits_count);
-    for (int i = 0; i < digits_count; i++) {
+    for (int i = 0; i < whole_digits_count; i++) {
         digits[i] = rng.get_random(0, base - 1);
     }
+    digits[whole_digits_count] = rng.get_random(0, (1 << major_bits) - 1);
 }
 
 bigint::bigint(const bigint& b) {
@@ -72,12 +74,17 @@ bool bigint::is_prime()
     return false;
 }
 
-void bigint::operator+=(bigint &b){
+unsigned long long bigint::log2()
+{
+    return _bits_count() - 1;
+}
+
+void bigint::operator+=(bigint b){
     bigint tmp = *this + b;
     *this = tmp;
 }
 
-bigint bigint::operator+ (bigint &b){
+bigint bigint::operator+ (bigint b){
     if (b.is_negative) {
         bigint pos_b = b;
         pos_b.is_negative = false;
@@ -112,42 +119,42 @@ bigint bigint::operator+ (bigint &b){
     return c;
 }
 
-void bigint::operator-= (bigint &b){
+void bigint::operator-= (bigint b){
     bigint tmp = *this - b;
     *this = tmp;
 }
 
-void bigint::operator*=(bigint& b)
+void bigint::operator*=(bigint b)
 {
     bigint tmp = *this * b;
     *this = tmp;
 }
 
-void bigint::operator/=(bigint& b)
+void bigint::operator/=(bigint b)
 {
     bigint tmp = *this / b;
     *this = tmp;
 }
 
-void bigint::operator%=(bigint& b)
+void bigint::operator%=(bigint b)
 {
     bigint tmp = *this % b;
     *this = tmp;
 }
 
-void bigint::operator++()
+void bigint::operator++(int d)
 {
     bigint one(1);
     *this += one;
 }
 
-void bigint::operator--()
+void bigint::operator--(int d)
 {
     bigint one(1);
     *this -= one;
 }
 
-bigint bigint::operator- (bigint &b){
+bigint bigint::operator- (bigint b){
     bigint c;
     if (*this < b){
         c = b - *this;
@@ -176,11 +183,11 @@ bigint bigint::operator- (bigint &b){
         c.digits.push_back(digit);
     }
     if (carry) c.digits.push_back(carry);
-    while(c.digits.size() > 0 && c.digits.back() == 0) c.digits.pop_back();
+    c.trim();
     return c;
 }
 
-bigint bigint::operator* (bigint &b){
+bigint bigint::operator* (bigint b){
     bigint c;
     c.digits.resize(digits.size() + b.digits.size(), 0);
     for(int i = 0; i < b.digits.size(); i++){
@@ -208,7 +215,7 @@ bigint bigint::operator* (bigint &b){
             }
         }
     }
-    while(c.digits.size() > 0 && c.digits.back() == 0) c.digits.pop_back();
+    c.trim();
     c.is_negative = is_negative ^ b.is_negative;
     return c;
 }
@@ -246,6 +253,13 @@ bool bigint::get_bit(int pos){
     return false;
 }
 
+void bigint::trim()
+{
+    while (digits.size() > 1 && digits.back() == 0) {
+        digits.pop_back();
+    }
+}
+
 void bigint::_div(bigint &b, bigint *res, bigint *mod){
     *res = 0LL;
     *mod = 0LL;
@@ -259,12 +273,10 @@ void bigint::_div(bigint &b, bigint *res, bigint *mod){
             res->set_bit(i, 1);
         }
     }
-    while(res->digits.size() > 0 && res->digits.back() == 0){
-        res->digits.pop_back();
-    }
+    res->trim();
 }
 
-bigint bigint::operator/ (bigint &b){
+bigint bigint::operator/ (bigint b){
     if (b == 0){
         throw "Divide by 0";
     }
@@ -274,7 +286,7 @@ bigint bigint::operator/ (bigint &b){
     return res;
 }
 
-bigint bigint::operator% (bigint &b){
+bigint bigint::operator% (bigint b){
     if (b == 0){
         throw "Divide by 0";
     }
@@ -286,12 +298,37 @@ bigint bigint::operator% (bigint &b){
     return mod;
 }
 
-bigint bigint::operator+(long b)
+bigint bigint::operator+(long num)
 {
-    return bigint();
+    bigint b(num);
+    return *this + b;
 }
 
-bool bigint::operator == (bigint &b){
+bigint bigint::operator-(long num)
+{
+    bigint b(num);
+    return *this - b;
+}
+
+bigint bigint::operator*(long num)
+{
+    bigint b(num);
+    return *this * b;
+}
+
+bigint bigint::operator/(long num)
+{
+    bigint b(num);
+    return *this / b;
+}
+
+bigint bigint::operator%(long num)
+{
+    bigint b(num);
+    return *this % b;
+}
+
+bool bigint::operator == (bigint b){
     if (is_negative != b.is_negative) return false;
     if (digits.size() != b.digits.size()) return false;
     for(int i = 0; i < digits.size(); i++){
@@ -306,11 +343,17 @@ bool bigint::operator == (long num){
     return *this == rhs;
 }
 
-bool bigint::operator != (bigint &b){
+bool bigint::operator != (bigint b){
     return !(*this == b);
 }
 
-bool bigint::operator < (bigint &b){
+bool bigint::operator!=(long num)
+{
+    bigint rhs = bigint(num);
+    return *this == rhs;
+}
+
+bool bigint::operator < (bigint b){
     // this < 0 and b > 0 => this < b
     if (is_negative && !b.is_negative) return true;
     // this > 0 and b < 0 => this > b
@@ -343,7 +386,7 @@ bool bigint::operator < (long num)
     return *this < rhs;
 }
 
-bool bigint::operator > (bigint &b){
+bool bigint::operator > (bigint b){
     return b < *this;
 }
 
@@ -353,14 +396,14 @@ bool bigint::operator > (long num)
     return *this > rhs;
 }
 
-bool bigint::operator <= (bigint &b){
+bool bigint::operator <= (bigint b){
     return !(*this > b);
 }
 bool bigint::operator<=(long num)
 {
     return *this < num || *this == num;
 }
-bool bigint::operator >= (bigint &b){
+bool bigint::operator >= (bigint b){
     return !(*this < b);
 }
 
@@ -383,9 +426,7 @@ bigint bigint::operator>>(int bits)
             res.digits[i] |= shifted;
         }
     }
-    while(res.digits.back() == 0 && res.digits.size() > 0){
-        res.digits.pop_back();
-    }
+    res.trim();
     return res;
 }
 
@@ -425,6 +466,13 @@ void bigint::operator >>= (int bits){
     *this = tmp;
 }
 
+unsigned int bigint::operator[](int index)
+{
+    if (index >= digits.size())
+        throw "Index is too big";
+    return digits[index];
+}
+
 bigint::~bigint()
 {
 }
@@ -448,4 +496,15 @@ RNG::RNG() {
 unsigned RNG::get_random(unsigned min, unsigned max) {
     std::uniform_int_distribution<unsigned> dist(min, max);
     return dist(engine);
+}
+
+bigint RNG::get_big_random(bigint min, bigint max)
+{
+    unsigned int bits = max.log2() + 1;
+    bigint res(*this, bits);
+    if (res + min > max) {
+        bigint tmp = (tmp + min) % max;
+        res = tmp;
+    }
+    return res + min;
 }
